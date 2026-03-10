@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>2026 — Year in Progress</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@300;400;500&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+
+:root{
+  --bg:#03050a;
+  --s1:#080d18;
+  --s2:#0e1525;
+  --border:rgba(100,210,255,0.1);
+  --c1:#00d4ff;
+  --c2:#0099cc;
+  --c3:#005f8a;
+  --c4:#7fffff;
+  --gone:#00d4ff;
+  --left:#1a3a4a;
+  --today:#00ffcc;
+  --text:#cce8f0;
+  --muted:#3a6070;
+  --white:#f0faff;
+  --glow:rgba(0,212,255,0.3);
+}
+
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Lato',sans-serif;
+  font-weight:300;
+  overflow-x:hidden;
+  cursor:none;
+  min-height:100vh;
+}
+
+/* CANVAS */
+#threejs{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* CURSOR */
+#dot{position:fixed;width:8px;height:8px;background:var(--c1);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);box-shadow:0 0 12px var(--c1)}
+#ring{position:fixed;width:28px;height:28px;border:1px solid rgba(0,212,255,.4);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all .15s ease}
+
+/* GRAIN */
+body::before{content:'';position:fixed;inset:0;z-index:1;opacity:.4;pointer-events:none;
+background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23f)' opacity='.035'/%3E%3C/svg%3E")}
+
+/* GRID LINES */
+body::after{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);
+background-size:60px 60px}
+
+.page{position:relative;z-index:2;max-width:1200px;margin:0 auto;padding:0 2.5rem}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:1rem 3rem;
+  display:flex;align-items:center;justify-content:space-between;
+  backdrop-filter:blur(24px);
+  background:rgba(3,5,10,.8);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{
+  font-family:'JetBrains Mono',monospace;font-size:.8rem;
+  letter-spacing:.25em;color:var(--c1);
+  text-shadow:0 0 20px var(--glow);
+}
+.nav-time{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted);letter-spacing:.1em}
+.nav-pct{
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  color:var(--c1);letter-spacing:.1em;
+  background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);
+  padding:.25rem .8rem;border-radius:3px;
+}
+
+/* ── HERO ── */
+#hero{
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;
+  padding:8rem 1rem 4rem;
+}
+
+.hero-year{
+  font-family:'Clash Display',sans-serif;
+  font-size:clamp(7rem,22vw,18rem);
+  font-weight:700;
+  line-height:.85;
+  letter-spacing:-.04em;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(0,212,255,.15);
+  position:relative;
+  opacity:0;animation:emerge 1s .1s ease forwards;
+}
+.hero-year-fill{
+  position:absolute;inset:0;
+  font-family:'Clash Display',sans-serif;
+  font-size:clamp(7rem,22vw,18rem);
+  font-weight:700;
+  line-height:.85;
+  letter-spacing:-.04em;
+  background:linear-gradient(135deg,var(--c1) 0%,var(--c4) 40%,rgba(0,212,255,.3) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 60px rgba(0,212,255,.4));
+  clip-path:inset(100% 0 0 0);
+  animation:fillReveal 1.8s .5s cubic-bezier(.16,1,.3,1) forwards;
+}
+
+.hero-subtitle{
+  font-family:'Instrument Serif',serif;
+  font-style:italic;
+  font-size:clamp(1.1rem,2.5vw,1.6rem);
+  color:var(--muted);
+  margin-top:1.5rem;
+  letter-spacing:.02em;
+  opacity:0;animation:emerge .9s .8s ease forwards;
+}
+
+/* ── BIG PROGRESS BAR ── */
+.big-prog-wrap{
+  width:100%;max-width:800px;
+  margin:3.5rem auto 0;
+  opacity:0;animation:emerge .9s 1s ease forwards;
+}
+.big-prog-meta{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  margin-bottom:1rem;
+}
+.big-prog-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.big-prog-pct{
+  font-family:'Clash Display',sans-serif;font-size:3.5rem;font-weight:700;
+  color:var(--c1);line-height:1;
+  text-shadow:0 0 40px var(--glow);
+}
+.big-prog-track{
+  height:6px;background:rgba(255,255,255,.04);border-radius:99px;overflow:visible;
+  position:relative;
+}
+.big-prog-fill{
+  height:100%;background:linear-gradient(90deg,var(--c2),var(--c1),var(--c4));
+  border-radius:99px;position:relative;
+  transition:width 2s cubic-bezier(.16,1,.3,1);
+  box-shadow:0 0 20px rgba(0,212,255,.5);
+}
+.big-prog-fill::after{
+  content:'TODAY';
+  position:absolute;right:-1px;top:-28px;
+  font-family:'JetBrains Mono',monospace;font-size:.5rem;letter-spacing:.15em;
+  color:var(--today);white-space:nowrap;
+  text-shadow:0 0 10px var(--today);
+}
+.big-prog-fill::before{
+  content:'';
+  position:absolute;right:-1px;top:50%;transform:translate(50%,-50%);
+  width:14px;height:14px;border-radius:50%;
+  background:var(--today);
+  box-shadow:0 0 20px var(--today),0 0 40px rgba(0,255,204,.3);
+  animation:todayPulse 2s ease-in-out infinite;
+}
+.prog-ends{display:flex;justify-content:space-between;margin-top:.6rem;
+  font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.1em}
+
+/* ── STAT CARDS ── */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;
+  margin-top:2.5rem;width:100%;max-width:800px;
+  opacity:0;animation:emerge .9s 1.2s ease forwards;
+}
+.stat-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:1.3rem 1.2rem;text-align:center;position:relative;overflow:hidden;
+  transition:border-color .3s,transform .3s;cursor:none;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--c1),transparent);
+  opacity:0;transition:opacity .3s;
+}
+.stat-card:hover{border-color:rgba(0,212,255,.3);transform:translateY(-3px)}
+.stat-card:hover::before{opacity:1}
+.stat-n{
+  font-family:'Clash Display',sans-serif;font-size:2.2rem;font-weight:700;
+  color:var(--c1);line-height:1;text-shadow:0 0 20px var(--glow);
+}
+.stat-n.green{color:var(--today);text-shadow:0 0 20px rgba(0,255,204,.4)}
+.stat-n.dim{color:var(--muted);text-shadow:none}
+.stat-lbl{font-family:'JetBrains Mono',monospace;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-top:.4rem}
+
+/* ── SECTIONS ── */
+section{padding:6rem 0;position:relative}
+.sec-label{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--c1);margin-bottom:.8rem}
+.sec-title{
+  font-family:'Clash Display',sans-serif;font-size:clamp(2rem,5vw,3.8rem);font-weight:700;
+  letter-spacing:-.02em;color:var(--white);line-height:1.05;margin-bottom:3rem;
+}
+.sec-title em{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:var(--c1)}
+
+/* ── MONTH CALENDAR ── */
+.months-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;
+}
+.month-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  padding:1.2rem;transition:all .3s;cursor:none;position:relative;overflow:hidden;
+}
+.month-card:hover{border-color:rgba(0,212,255,.3);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.month-card.past{opacity:.6}
+.month-card.current{border-color:rgba(0,255,204,.35);box-shadow:0 0 30px rgba(0,255,204,.08)}
+.month-card.current::after{
+  content:'NOW';position:absolute;top:.7rem;right:.7rem;
+  font-family:'JetBrains Mono',monospace;font-size:.48rem;letter-spacing:.2em;
+  color:var(--today);background:rgba(0,255,204,.1);border:1px solid rgba(0,255,204,.25);
+  padding:.15rem .45rem;border-radius:3px;
+}
+.month-card.future{opacity:.45}
+.month-name{
+  font-family:'Clash Display',sans-serif;font-size:1rem;font-weight:600;
+  color:var(--white);letter-spacing:.04em;margin-bottom:.8rem;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.month-num{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-hdr{font-family:'JetBrains Mono',monospace;font-size:.45rem;color:var(--muted);text-align:center;padding:.15rem 0;letter-spacing:.05em}
+.cal-day{
+  aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:.5rem;
+  border-radius:3px;color:var(--muted);
+  transition:background .2s;
+}
+.cal-day.gone{background:rgba(0,212,255,.12);color:rgba(0,212,255,.7)}
+.cal-day.today{
+  background:var(--today);color:var(--bg);font-weight:500;
+  box-shadow:0 0 8px var(--today);border-radius:50%;
+}
+.cal-day.future{color:rgba(255,255,255,.12)}
+.cal-day.empty{}
+.month-prog{margin-top:.8rem;height:2px;background:rgba(255,255,255,.04);border-radius:99px;overflow:hidden}
+.month-prog-fill{height:100%;background:linear-gradient(90deg,var(--c2),var(--c1));border-radius:99px;transition:width 1.5s cubic-bezier(.16,1,.3,1)}
+
+/* ── WEEK DOT GRID ── */
+#weeks{padding:6rem 0}
+.week-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:2rem}
+.week-dot{
+  width:24px;height:24px;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-size:.4rem;
+  transition:transform .2s,box-shadow .2s;cursor:none;
+  position:relative;
+}
+.week-dot:hover{transform:scale(1.4);z-index:10}
+.week-dot.gone{background:rgba(0,212,255,.18);color:rgba(0,212,255,.6)}
+.week-dot.current{background:var(--today);color:var(--bg);box-shadow:0 0 12px var(--today);animation:weekPulse 2s infinite}
+.week-dot.future{background:rgba(255,255,255,.04);color:rgba(255,255,255,.1)}
+.week-tooltip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--s2);border:1px solid var(--border);border-radius:6px;
+  padding:.4rem .7rem;font-size:.55rem;white-space:nowrap;color:var(--text);
+  opacity:0;pointer-events:none;transition:opacity .15s;z-index:20;
+}
+.week-dot:hover .week-tooltip{opacity:1}
+
+/* ── DAY DOT GRID ── */
+#days-sec{padding:6rem 0}
+.day-grid{display:flex;flex-wrap:wrap;gap:4px;margin-top:2rem}
+.day-sq{
+  width:12px;height:12px;border-radius:2px;
+  transition:transform .15s;cursor:none;position:relative;
+}
+.day-sq:hover{transform:scale(2);z-index:10}
+.day-sq.gone{background:rgba(0,212,255,.22)}
+.day-sq.today{background:var(--today);box-shadow:0 0 6px var(--today);animation:todayPulse 2s infinite}
+.day-sq.future{background:rgba(255,255,255,.04)}
+.day-legend{display:flex;gap:1.5rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:.5rem;font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.1em}
+.legend-sq{width:10px;height:10px;border-radius:2px}
+
+/* ── QUARTER ARCS ── */
+#quarters{padding:6rem 0}
+.quarter-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;margin-top:2rem}
+.quarter-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:2rem;text-align:center;
+  transition:all .3s;cursor:none;
+}
+.quarter-card:hover{border-color:rgba(0,212,255,.3);transform:translateY(-4px)}
+.quarter-card.active{border-color:rgba(0,255,204,.35)}
+.q-label{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:1rem}
+.q-arc-wrap{position:relative;width:100px;height:100px;margin:0 auto 1rem}
+.q-arc-wrap svg{transform:rotate(-90deg)}
+.q-track{fill:none;stroke:rgba(255,255,255,.05);stroke-width:6}
+.q-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 2s cubic-bezier(.16,1,.3,1)}
+.q-pct{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:'Clash Display',sans-serif;font-size:1.5rem;font-weight:700;color:var(--c1);
+}
+.q-months{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.08em}
+
+/* ── TIMELINE ── */
+#timeline-sec{padding:6rem 0}
+.tl-bar{
+  height:64px;background:var(--s1);border:1px solid var(--border);border-radius:8px;
+  position:relative;overflow:hidden;margin-bottom:.6rem;
+}
+.tl-fill{
+  position:absolute;top:0;left:0;bottom:0;
+  background:linear-gradient(90deg,var(--c3),var(--c2),var(--c1));
+  transition:width 2s cubic-bezier(.16,1,.3,1);
+}
+.tl-today-line{
+  position:absolute;top:0;bottom:0;width:2px;background:var(--today);
+  box-shadow:0 0 8px var(--today);
+}
+.tl-bar-label{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;
+  padding:0 1rem;
+  font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--white);
+  mix-blend-mode:screen;
+}
+.tl-month-markers{display:flex;height:20px;margin-bottom:2rem;position:relative}
+.tl-marker{
+  flex:1;text-align:center;font-family:'JetBrains Mono',monospace;
+  font-size:.48rem;color:var(--muted);letter-spacing:.05em;
+  border-left:1px solid rgba(255,255,255,.06);padding-top:.25rem;
+}
+
+/* ── CLOCK ── */
+#clock-sec{
+  padding:6rem 0;
+  display:flex;flex-direction:column;align-items:center;text-align:center;
+}
+.clock-ring{position:relative;width:280px;height:280px;margin:2rem auto}
+.clock-ring svg{transform:rotate(-90deg)}
+.clock-center{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+}
+.clock-big{font-family:'Clash Display',sans-serif;font-size:3.2rem;font-weight:700;color:var(--white);line-height:1}
+.clock-small{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--muted);letter-spacing:.2em;text-transform:uppercase;margin-top:.4rem}
+
+/* ── QUOTE ── */
+#quote-sec{padding:5rem 0;text-align:center}
+.quote-text{
+  font-family:'Instrument Serif',serif;font-style:italic;
+  font-size:clamp(1.4rem,3vw,2.2rem);color:var(--white);line-height:1.5;
+  max-width:700px;margin:0 auto 1.5rem;
+}
+.quote-text span{color:var(--c1)}
+.quote-attr{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+
+/* FOOTER */
+footer{
+  border-top:1px solid var(--border);padding:2rem 3rem;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;
+  position:relative;z-index:2;
+}
+.footer-brand{font-family:'Clash Display',sans-serif;font-size:1rem;font-weight:700;color:var(--c1);letter-spacing:.06em}
+.footer-copy{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted);letter-spacing:.1em}
+
+/* REVEAL */
+.reveal{opacity:0;transform:translateY(22px);transition:opacity .7s ease,transform .7s ease}
+.reveal.vis{opacity:1;transform:none}
+
+/* KEYFRAMES */
+@keyframes emerge{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fillReveal{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0% 0 0 0)}}
+@keyframes todayPulse{0%,100%{box-shadow:0 0 20px var(--today),0 0 40px rgba(0,255,204,.3)}50%{box-shadow:0 0 30px var(--today),0 0 70px rgba(0,255,204,.5)}}
+@keyframes weekPulse{0%,100%{box-shadow:0 0 12px var(--today)}50%{box-shadow:0 0 22px var(--today),0 0 40px rgba(0,255,204,.4)}}
+
+@media(max-width:900px){
+  .months-grid{grid-template-columns:repeat(2,1fr)}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .quarter-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:600px){
+  .months-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .page{padding:0 1rem}
+  nav{padding:.8rem 1rem}
+  .nav-time{display:none}
+}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:rgba(0,212,255,.25);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="dot"></div>
+<div id="ring"></div>
+<canvas id="threejs"></canvas>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">YEAR // 2026</div>
+  <div class="nav-time" id="nav-time">--:--:--</div>
+  <div class="nav-pct" id="nav-pct">--%</div>
+</nav>
+
+<div class="page">
+
+<!-- ══════════════════════════════════════════════════════════════════
+     HERO
+══════════════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div style="position:relative;display:inline-block">
+    <div class="hero-year">2026</div>
+    <div class="hero-year-fill">2026</div>
+  </div>
+  <div class="hero-subtitle">How much of your year has already slipped away?</div>
+
+  <div class="big-prog-wrap">
+    <div class="big-prog-meta">
+      <div class="big-prog-label">Year Progress</div>
+      <div class="big-prog-pct" id="hero-pct">0%</div>
+    </div>
+    <div class="big-prog-track">
+      <div class="big-prog-fill" id="hero-fill" style="width:0%"></div>
+    </div>
+    <div class="prog-ends">
+      <span>Jan 1, 2026</span>
+      <span id="prog-today-label">Today</span>
+      <span>Dec 31, 2026</span>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-n" id="s-gone">--</div>
+      <div class="stat-lbl">Days Gone</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-n green" id="s-today">--</div>
+      <div class="stat-lbl">Today (Day #)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-n dim" id="s-left">--</div>
+      <div class="stat-lbl">Days Left</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-n" id="s-weeks">--</div>
+      <div class="stat-lbl">Weeks Left</div>
+    </div>
+  </div>
+
+  <div style="margin-top:2rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);opacity:0;animation:emerge .9s 1.4s ease forwards">
+    ↓ scroll to explore your year
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     QUARTERS
+══════════════════════════════════════════════════════════════════ -->
+<section id="quarters">
+  <div class="reveal">
+    <div class="sec-label">// Quarter Breakdown</div>
+    <div class="sec-title">How Each Quarter<br><em>Is Tracking</em></div>
+  </div>
+  <div class="quarter-grid reveal" id="q-grid"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     HORIZONTAL TIMELINE BAR
+══════════════════════════════════════════════════════════════════ -->
+<section id="timeline-sec">
+  <div class="reveal">
+    <div class="sec-label">// Year at a Glance</div>
+    <div class="sec-title">The <em>Full Year</em> Timeline</div>
+  </div>
+  <div class="reveal">
+    <div class="tl-month-markers" id="tl-markers"></div>
+    <div class="tl-bar">
+      <div class="tl-fill" id="tl-fill" style="width:0%"></div>
+      <div class="tl-today-line" id="tl-today"></div>
+      <div class="tl-bar-label">
+        <span>JAN 2026</span>
+        <span id="tl-center-label">── TODAY ──</span>
+        <span>DEC 2026</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:.5rem;font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--muted)">
+      <span>0%</span>
+      <span id="tl-today-pct" style="color:var(--today)">today</span>
+      <span>100%</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     12-MONTH CALENDAR
+══════════════════════════════════════════════════════════════════ -->
+<section id="cal-sec">
+  <div class="reveal">
+    <div class="sec-label">// Full Year Calendar</div>
+    <div class="sec-title">Every Day of<br><em>2026 Mapped</em></div>
+  </div>
+  <div class="months-grid reveal" id="months-grid"></div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     WEEK DOTS
+══════════════════════════════════════════════════════════════════ -->
+<section id="weeks">
+  <div class="reveal">
+    <div class="sec-label">// 52 Weeks</div>
+    <div class="sec-title">Every Week of<br><em>2026</em></div>
+  </div>
+  <div class="day-legend reveal">
+    <div class="legend-item"><div class="legend-sq" style="background:rgba(0,212,255,.22)"></div>Gone</div>
+    <div class="legend-item"><div class="legend-sq" style="background:var(--today);box-shadow:0 0 6px var(--today)"></div>This Week</div>
+    <div class="legend-item"><div class="legend-sq" style="background:rgba(255,255,255,.05)"></div>Ahead</div>
+  </div>
+  <div class="week-grid reveal" id="week-grid"></div>
+  <div style="margin-top:1.5rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.12em" class="reveal">
+    <span id="weeks-gone-label">-- weeks gone</span> · <span id="weeks-left-label">-- weeks left</span>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     365 DAY DOTS
+══════════════════════════════════════════════════════════════════ -->
+<section id="days-sec">
+  <div class="reveal">
+    <div class="sec-label">// 365 Days</div>
+    <div class="sec-title">Every Single Day<br><em>Visualised</em></div>
+  </div>
+  <div class="day-legend reveal">
+    <div class="legend-item"><div class="legend-sq" style="background:rgba(0,212,255,.22)"></div>Gone</div>
+    <div class="legend-item"><div class="legend-sq" style="background:var(--today);box-shadow:0 0 6px var(--today)"></div>Today</div>
+    <div class="legend-item"><div class="legend-sq" style="background:rgba(255,255,255,.05)"></div>Remaining</div>
+  </div>
+  <div class="day-grid reveal" id="day-grid"></div>
+  <div style="margin-top:1.2rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);letter-spacing:.12em" class="reveal">
+    <span id="days-gone-lbl" style="color:rgba(0,212,255,.7)">-- days gone</span>
+    &nbsp;·&nbsp;
+    <span id="days-left-lbl">-- days remaining</span>
+    &nbsp;·&nbsp;
+    <span id="days-total-lbl">365 total</span>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     LIVE CLOCK
+══════════════════════════════════════════════════════════════════ -->
+<section id="clock-sec">
+  <div class="reveal">
+    <div class="sec-label" style="text-align:center">// Right Now</div>
+    <div class="sec-title" style="text-align:center;margin-bottom:0">The Seconds<br><em>Ticking Away</em></div>
+  </div>
+  <div class="clock-ring reveal">
+    <svg viewBox="0 0 280 280" width="280" height="280">
+      <defs>
+        <linearGradient id="clockGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#00d4ff"/>
+          <stop offset="100%" stop-color="#00ffcc"/>
+        </linearGradient>
+      </defs>
+      <!-- outer: year -->
+      <circle class="q-track" cx="140" cy="140" r="128" stroke="rgba(0,212,255,.05)" stroke-width="4"/>
+      <circle id="yr-arc" cx="140" cy="140" r="128" fill="none" stroke="url(#clockGrad)" stroke-width="4" stroke-linecap="round"
+        stroke-dasharray="804" stroke-dashoffset="804" style="transition:stroke-dashoffset 1s linear"/>
+      <!-- inner: day -->
+      <circle cx="140" cy="140" r="108" fill="none" stroke="rgba(0,212,255,.05)" stroke-width="4"/>
+      <circle id="day-arc" cx="140" cy="140" r="108" fill="none" stroke="rgba(0,255,204,.6)" stroke-width="4" stroke-linecap="round"
+        stroke-dasharray="679" stroke-dashoffset="679" style="transition:stroke-dashoffset 1s linear"/>
+    </svg>
+    <div class="clock-center">
+      <div class="clock-big" id="live-time">--:--:--</div>
+      <div class="clock-small" id="live-date">loading</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:3rem;justify-content:center;flex-wrap:wrap;margin-top:1rem" class="reveal">
+    <div style="text-align:center">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Outer Ring</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:rgba(0,212,255,.7)">Year Progress</div>
+    </div>
+    <div style="text-align:center">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem">Inner Ring</div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:rgba(0,255,204,.7)">Day Progress</div>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE -->
+<section id="quote-sec">
+  <div class="reveal">
+    <div class="quote-text">"The year does not wait for you. <span>Each day spent</span> is a day you cannot reclaim — the only question is whether you made it matter."</div>
+    <div class="quote-attr">— 2026 Year in Progress</div>
+  </div>
+</section>
+
+</div><!-- /page -->
+
+<footer>
+  <div class="footer-brand">2026 PROGRESS</div>
+  <div class="footer-copy">Live · Updates every second · <span id="footer-time">--</span></div>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<script>
+// ── THREE.JS GRID / PARTICLE FIELD ────────────────────────────────
+const cv = document.getElementById('threejs');
+const rdr = new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+rdr.setPixelRatio(Math.min(devicePixelRatio,2));
+rdr.setSize(innerWidth,innerHeight);
+const sc = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,1000);
+cam.position.z = 85;
+
+const N=1500,ppos=new Float32Array(N*3),pcol=new Float32Array(N*3),psz=new Float32Array(N);
+for(let i=0;i<N;i++){
+  ppos[i*3]=(Math.random()-.5)*200; ppos[i*3+1]=(Math.random()-.5)*160; ppos[i*3+2]=(Math.random()-.5)*80;
+  psz[i]=Math.random()*1.2+.2;
+  const t=Math.random();
+  if(t<.5){pcol[i*3]=0;pcol[i*3+1]=.83;pcol[i*3+2]=1}
+  else if(t<.8){pcol[i*3]=0;pcol[i*3+1]=1;pcol[i*3+2]=.8}
+  else{pcol[i*3]=.1;pcol[i*3+1]=.4;pcol[i*3+2]=.6}
+}
+const pg=new THREE.BufferGeometry();
+pg.setAttribute('position',new THREE.BufferAttribute(ppos,3));
+pg.setAttribute('color',new THREE.BufferAttribute(pcol,3));
+const pm=new THREE.PointsMaterial({size:.5,vertexColors:true,transparent:true,opacity:.45,sizeAttenuation:true,blending:THREE.AdditiveBlending,depthWrite:false});
+sc.add(new THREE.Points(pg,pm));
+
+let mx=0,my=0;
+document.addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*2;my=-(e.clientY/innerHeight-.5)*2});
+window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();rdr.setSize(innerWidth,innerHeight)});
+let fr=0;
+(function loop(){requestAnimationFrame(loop);fr++;
+  sc.rotation.y+=.0003;sc.rotation.x+=.0001;
+  cam.position.x+=(mx*6-cam.position.x)*.02;
+  cam.position.y+=(my*4-cam.position.y)*.02;
+  cam.lookAt(sc.position);rdr.render(sc,cam);
+})();
+
+// ── CURSOR ────────────────────────────────────────────────────────
+const dot=document.getElementById('dot'),ring=document.getElementById('ring');
+let cx=0,cy=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY});
+(function cl(){dot.style.left=cx+'px';dot.style.top=cy+'px';rx+=(cx-rx)*.13;ry+=(cy-ry)*.13;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(cl)})();
+
+// ── DATE UTILS ────────────────────────────────────────────────────
+const YEAR = 2026;
+const Y_START = new Date(YEAR,0,1);
+const Y_END   = new Date(YEAR,11,31,23,59,59,999);
+const TOTAL_DAYS = 365; // 2026 is not a leap year
+
+function dayOfYear(d){
+  return Math.floor((d - Y_START)/86400000)+1;
+}
+
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SHORT=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const DAYS_IN_MONTH=[31,28,31,30,31,30,31,31,30,31,30,31]; // 2026 normal year
+const DAY_LABELS=['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+function daysInMonth(m){ return DAYS_IN_MONTH[m]; }
+function firstDayOfMonth(m){
+  // day of week (0=Sun) for Jan 1 2026 = Thursday (4); Mon-indexed so Thu=3
+  const d = new Date(YEAR,m,1);
+  return (d.getDay()+6)%7; // 0=Mon
+}
+
+// ── MAIN UPDATE ───────────────────────────────────────────────────
+function update(){
+  const now = new Date();
+  const isInYear = now.getFullYear() === YEAR;
+  const isBefore = now.getFullYear() < YEAR;
+  const isAfter  = now.getFullYear() > YEAR;
+
+  let pct=0, dayNum=0, daysGone=0, daysLeft=365;
+  if(isInYear){
+    dayNum = dayOfYear(now);
+    daysGone = dayNum-1;
+    daysLeft = TOTAL_DAYS - dayNum;
+    pct = (dayNum-1+(now.getHours()*3600+now.getMinutes()*60+now.getSeconds())/86400)/TOTAL_DAYS;
+  } else if(isAfter){ pct=1;daysGone=365;daysLeft=0;dayNum=365; }
+
+  const pctStr = (pct*100).toFixed(2)+'%';
+  const weeksLeft = Math.ceil(daysLeft/7);
+  const weeksGone = Math.floor(daysGone/7);
+
+  // Nav
+  document.getElementById('nav-pct').textContent = (pct*100).toFixed(1)+'%';
+  document.getElementById('nav-time').textContent = now.toLocaleTimeString('en-AU');
+
+  // Hero
+  document.getElementById('hero-pct').textContent = (pct*100).toFixed(2)+'%';
+  document.getElementById('hero-fill').style.width = (pct*100)+'%';
+  document.getElementById('prog-today-label').textContent = isInYear ? now.toLocaleDateString('en-AU',{day:'numeric',month:'short'}) : (isBefore ? '← Future' : '✓ Done');
+  document.getElementById('s-gone').textContent = daysGone;
+  document.getElementById('s-today').textContent = isInYear ? dayNum : (isBefore ? '0' : '365');
+  document.getElementById('s-left').textContent = daysLeft;
+  document.getElementById('s-weeks').textContent = weeksLeft;
+
+  // Timeline
+  document.getElementById('tl-fill').style.width = (pct*100)+'%';
+  document.getElementById('tl-today').style.left = (pct*100)+'%';
+  document.getElementById('tl-today-pct').textContent = (pct*100).toFixed(1)+'% — '+now.toLocaleDateString('en-AU',{day:'numeric',month:'short'});
+  document.getElementById('tl-center-label').textContent = isInYear ? '── '+now.toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})+' ──' : '──';
+
+  // Week dots
+  document.getElementById('weeks-gone-label').textContent = weeksGone+' weeks gone';
+  document.getElementById('weeks-left-label').textContent = weeksLeft+' weeks left';
+
+  // Day labels
+  document.getElementById('days-gone-lbl').textContent = daysGone+' days gone';
+  document.getElementById('days-left-lbl').textContent = daysLeft+' days remaining';
+
+  // Live clock arcs
+  const yearFrac = pct;
+  const YCIRC=2*Math.PI*128, DCIRC=2*Math.PI*108;
+  const dayFrac = (now.getHours()*3600+now.getMinutes()*60+now.getSeconds())/86400;
+  document.getElementById('yr-arc').style.strokeDashoffset = YCIRC-(yearFrac*YCIRC);
+  document.getElementById('day-arc').style.strokeDashoffset = DCIRC-(dayFrac*DCIRC);
+  document.getElementById('live-time').textContent = now.toLocaleTimeString('en-AU');
+  document.getElementById('live-date').textContent = now.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  document.getElementById('footer-time').textContent = now.toLocaleTimeString('en-AU');
+}
+
+// ── BUILD MONTHS CALENDAR ─────────────────────────────────────────
+function buildCalendar(){
+  const now = new Date();
+  const grid = document.getElementById('months-grid');
+  grid.innerHTML='';
+  MONTHS.forEach((mName,mi)=>{
+    const dim = daysInMonth(mi);
+    const fd  = firstDayOfMonth(mi);
+    const isPast   = now.getFullYear()>YEAR || (now.getFullYear()===YEAR && now.getMonth()>mi);
+    const isCurrent= now.getFullYear()===YEAR && now.getMonth()===mi;
+    const isFuture = now.getFullYear()<YEAR || (now.getFullYear()===YEAR && now.getMonth()<mi);
+    const todayD   = isCurrent ? now.getDate() : -1;
+
+    // month % progress
+    let mPct = isPast ? 100 : isCurrent ? ((now.getDate()-1)/dim*100) : 0;
+
+    const card = document.createElement('div');
+    card.className='month-card '+(isPast?'past':isCurrent?'current':'future');
+    card.innerHTML=`
+      <div class="month-name">
+        <span>${mName}</span>
+        <span class="month-num">${MONTHS_SHORT[mi]}</span>
+      </div>
+      <div class="cal-grid">
+        ${DAY_LABELS.map(d=>`<div class="cal-hdr">${d}</div>`).join('')}
+        ${Array(fd).fill('<div class="cal-day empty"></div>').join('')}
+        ${Array.from({length:dim},(_,i)=>{
+          const d=i+1;
+          let cls='cal-day';
+          if(d===todayD) cls+=' today';
+          else if(isPast||(isCurrent&&d<todayD)) cls+=' gone';
+          else cls+=' future';
+          return `<div class="${cls}">${d}</div>`;
+        }).join('')}
+      </div>
+      <div class="month-prog">
+        <div class="month-prog-fill" style="width:${mPct}%"></div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── BUILD WEEK DOTS ───────────────────────────────────────────────
+function buildWeeks(){
+  const now = new Date();
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML='';
+  // 52 weeks + possible partial
+  for(let w=0;w<53;w++){
+    const wStart = new Date(Y_START);
+    wStart.setDate(wStart.getDate() + w*7);
+    if(wStart.getFullYear()>YEAR) break;
+    const wEnd = new Date(wStart); wEnd.setDate(wEnd.getDate()+6);
+    const isPast = wEnd < now && now.getFullYear()>=YEAR;
+    const isCurrent = now >= wStart && now <= wEnd && now.getFullYear()===YEAR;
+    const isFuture = wStart > now || now.getFullYear()<YEAR;
+    const dot = document.createElement('div');
+    dot.className='week-dot '+(isCurrent?'current':isPast?'gone':'future');
+    dot.innerHTML=`<span>${w+1}</span><div class="week-tooltip">W${w+1}: ${wStart.toLocaleDateString('en-AU',{day:'numeric',month:'short'})}</div>`;
+    grid.appendChild(dot);
+  }
+}
+
+// ── BUILD 365 DAY DOTS ────────────────────────────────────────────
+function buildDayDots(){
+  const now = new Date();
+  const grid = document.getElementById('day-grid');
+  grid.innerHTML='';
+  for(let d=1;d<=365;d++){
+    const date = new Date(YEAR,0,d);
+    const isPast = date < new Date(now.getFullYear(),now.getMonth(),now.getDate()) && now.getFullYear()>=YEAR;
+    const isToday = date.getDate()===now.getDate() && date.getMonth()===now.getMonth() && date.getFullYear()===now.getFullYear() && now.getFullYear()===YEAR;
+    const sq = document.createElement('div');
+    sq.className='day-sq '+(isToday?'today':isPast?'gone':'future');
+    sq.title=date.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'});
+    grid.appendChild(sq);
+  }
+}
+
+// ── BUILD QUARTERS ────────────────────────────────────────────────
+function buildQuarters(){
+  const now=new Date();
+  const qs=[
+    {label:'Q1',months:'Jan – Mar',start:new Date(2026,0,1),end:new Date(2026,2,31,23,59,59),days:90},
+    {label:'Q2',months:'Apr – Jun',start:new Date(2026,3,1),end:new Date(2026,5,30,23,59,59),days:91},
+    {label:'Q3',months:'Jul – Sep',start:new Date(2026,6,1),end:new Date(2026,8,30,23,59,59),days:92},
+    {label:'Q4',months:'Oct – Dec',start:new Date(2026,9,1),end:new Date(2026,11,31,23,59,59),days:92},
+  ];
+  const CIRC=2*Math.PI*44;
+  const colors=['url(#qg1)','url(#qg2)','url(#qg3)','url(#qg4)'];
+  const gradDefs=`<defs>
+    <linearGradient id="qg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#0099cc"/></linearGradient>
+    <linearGradient id="qg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00ffcc"/><stop offset="100%" stop-color="#00d4ff"/></linearGradient>
+    <linearGradient id="qg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7fffff"/><stop offset="100%" stop-color="#00ffcc"/></linearGradient>
+    <linearGradient id="qg4" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0099cc"/><stop offset="100%" stop-color="#7fffff"/></linearGradient>
+  </defs>`;
+  const grid=document.getElementById('q-grid');
+  grid.innerHTML='';
+  qs.forEach((q,i)=>{
+    let pct=0;
+    if(now>q.end) pct=100;
+    else if(now>=q.start) pct=Math.min(((now-q.start)/(q.end-q.start))*100,100);
+    const isActive=now>=q.start&&now<=q.end&&now.getFullYear()===YEAR;
+    const offset=CIRC-(pct/100)*CIRC;
+    const card=document.createElement('div');
+    card.className='quarter-card'+(isActive?' active':'');
+    card.innerHTML=`
+      <div class="q-label">${q.label} · ${q.months}</div>
+      <div class="q-arc-wrap">
+        <svg viewBox="0 0 100 100" width="100" height="100">
+          ${gradDefs}
+          <circle class="q-track" cx="50" cy="50" r="44" stroke="rgba(0,212,255,.06)" stroke-width="6"/>
+          <circle cx="50" cy="50" r="44" fill="none" stroke="${colors[i]}" stroke-width="6" stroke-linecap="round"
+            stroke-dasharray="${CIRC.toFixed(1)}" stroke-dashoffset="${CIRC.toFixed(1)}"
+            data-offset="${offset.toFixed(1)}"
+            style="transition:stroke-dashoffset 2s cubic-bezier(.16,1,.3,1);transform:rotate(-90deg);transform-origin:50% 50%"/>
+        </svg>
+        <div class="q-pct">${pct.toFixed(0)}%</div>
+      </div>
+      <div class="q-months">${q.days} days · ${q.label}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── BUILD TIMELINE MARKERS ────────────────────────────────────────
+function buildMarkers(){
+  const container=document.getElementById('tl-markers');
+  container.innerHTML='';
+  MONTHS_SHORT.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='tl-marker';d.textContent=m;container.appendChild(d);
+  });
+}
+
+// ── INTERSECTION OBSERVER ─────────────────────────────────────────
+const obs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('vis');
+      // trigger Q arcs
+      e.target.querySelectorAll('[data-offset]').forEach(el=>{
+        el.style.strokeDashoffset=el.dataset.offset;
+      });
+    }
+  });
+},{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// ── INIT ──────────────────────────────────────────────────────────
+buildCalendar();
+buildWeeks();
+buildDayDots();
+buildQuarters();
+buildMarkers();
+update();
+setInterval(update,1000);
+</script>
+</body>
+</html>
